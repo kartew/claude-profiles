@@ -5,7 +5,7 @@ use clap_complete::{generate, Shell};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use similar::{ChangeTag, TextDiff};
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 
 use crate::cli::Cli;
 use crate::profile::ProfileManager;

@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 pub struct Config {
-    pub claude_dir: PathBuf,
     pub profiles_dir: PathBuf,
     pub backups_dir: PathBuf,
     pub settings_file: PathBuf,
@@ -17,9 +16,8 @@ impl Config {
         let backups_dir = claude_dir.join("backups");
         let settings_file = claude_dir.join("settings.json");
         let current_profile_file = profiles_dir.join(".current");
-        
+
         Ok(Self {
-            claude_dir,
             profiles_dir,
             backups_dir,
             settings_file,

@@ -157,7 +157,8 @@ impl ProfileManager {
                         if !map.contains_key(*part) {
                             map.insert(part.to_string(), Value::Object(Map::new()));
                         }
-                        current = map.get_mut(*part).unwrap();
+                        current = map.get_mut(*part)
+                            .with_context(|| format!("Key '{}' not found in path", part))?;
                     }
                     _ => bail!("Cannot navigate: path is not an object"),
                 }
