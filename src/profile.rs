@@ -197,3 +197,108 @@ impl ProfileManager {
         Ok(false)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_get_value_simple() {
+        let data = json!({ "model": "sonnet-4" });
+        let pm = ProfileManager::new().unwrap();
+        assert_eq!(pm.get_value(&data, "model"), Some(json!("sonnet-4")));
+    }
+
+    #[test]
+    fn test_get_value_nested() {
+        let data = json!({
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.example.com"
+            }
+        });
+        let pm = ProfileManager::new().unwrap();
+        assert_eq!(
+            pm.get_value(&data, "env.ANTHROPIC_BASE_URL"),
+            Some(json!("https://api.example.com"))
+        );
+    }
+
+    #[test]
+    fn test_get_value_missing() {
+        let data = json!({ "model": "sonnet-4" });
+        let pm = ProfileManager::new().unwrap();
+        assert_eq!(pm.get_value(&data, "missing_key"), None);
+    }
+
+    #[test]
+    fn test_get_value_missing_nested() {
+        let data = json!({ "model": "sonnet-4" });
+        let pm = ProfileManager::new().unwrap();
+        assert_eq!(pm.get_value(&data, "env.MISSING"), None);
+    }
+
+    #[test]
+    fn test_set_value_new_key() {
+        let mut data = json!({});
+        let pm = ProfileManager::new().unwrap();
+        pm.set_value(&mut data, "model", json!("haiku-3")).unwrap();
+        assert_eq!(data["model"], json!("haiku-3"));
+    }
+
+    #[test]
+    fn test_set_value_nested() {
+        let mut data = json!({});
+        let pm = ProfileManager::new().unwrap();
+        pm.set_value(&mut data, "env.ANTHROPIC_BASE_URL", json!("https://test.com")).unwrap();
+        assert_eq!(data["env"]["ANTHROPIC_BASE_URL"], json!("https://test.com"));
+    }
+
+    #[test]
+    fn test_set_value_overwrite() {
+        let mut data = json!({ "model": "sonnet-4" });
+        let pm = ProfileManager::new().unwrap();
+        pm.set_value(&mut data, "model", json!("haiku-3")).unwrap();
+        assert_eq!(data["model"], json!("haiku-3"));
+    }
+
+    #[test]
+    fn test_unset_value_existing() {
+        let mut data = json!({ "model": "sonnet-4", "other": "value" });
+        let pm = ProfileManager::new().unwrap();
+        assert!(pm.unset_value(&mut data, "model").unwrap());
+        assert!(!data.get("model").is_some());
+        assert_eq!(data["other"], json!("value"));
+    }
+
+    #[test]
+    fn test_unset_value_missing() {
+        let mut data = json!({ "model": "sonnet-4" });
+        let pm = ProfileManager::new().unwrap();
+        assert!(!pm.unset_value(&mut data, "missing").unwrap());
+        assert_eq!(data["model"], json!("sonnet-4"));
+    }
+
+    #[test]
+    fn test_unset_value_nested() {
+        let mut data = json!({ "env": { "ANTHROPIC_BASE_URL": "https://test.com" } });
+        let pm = ProfileManager::new().unwrap();
+        assert!(pm.unset_value(&mut data, "env.ANTHROPIC_BASE_URL").unwrap());
+        assert!(!data["env"].get("ANTHROPIC_BASE_URL").is_some());
+    }
+
+    #[test]
+    fn test_profile_roundtrip() {
+        let data = json!({
+            "model": "sonnet-4",
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.anthropic.com"
+            },
+            "alwaysThinkingEnabled": true
+        });
+        let _pm = ProfileManager::new().unwrap();
+        let serialized = serde_json::to_string_pretty(&data).unwrap();
+        let parsed: Value = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(data, parsed);
+    }
+}
