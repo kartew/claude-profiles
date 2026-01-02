@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Build binaries
+        run: |
+          cargo build --release --target x86_64-unknown-linux-gnu
+          cargo build --release --target aarch64-unknown-linux-gnu
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-pc-windows-gnu
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+
+          # Linux x86_64
+          tar -czf ccp-x86_64-unknown-linux-gnu.tar.gz -C target/x86_64-unknown-linux-gnu/release ccp
+          gh release create $VERSION \
+            target/x86_64-unknown-linux-gnu/release/ccp::Linux x86_64 \
+            target/aarch64-unknown-linux-gnu/release/ccp::Linux ARM64 \
+            target/x86_64-apple-darwin/release/ccp::macOS x86_64 \
+            target/aarch64-apple-darwin/release/ccp::macOS Apple Silicon (M1/M2/M3) \
+            target/x86_64-pc-windows-gnu/ccp.exe::Windows x86_64 \
+            --title "claude-profiles $VERSION" \
+            --notes "Release $VERSION of claude-profiles"
+
+      - name: Upload Linux x86_64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/x86_64-unknown-linux-gnu/release/ccp
+          asset_name: ccp-linux-x86_64
+          asset_content_type: application/octet-stream
+
+      - name: Upload macOS Apple Silicon
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/aarch64-apple-darwin/release/ccp
+          asset_name: ccp-macos-arm64
+          asset_content_type: application/octet-stream
+
+      - name: Upload macOS Intel
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/x86_64-apple-darwin/release/ccp
+          asset_name: ccp-macos-x86_64
+          asset_content_type: application/octet-stream
